@@ -1,5 +1,5 @@
 """
-Research API client for fetching real papers from PubMed, Semantic Scholar, and arXiv
+Research API client for fetching real papers from PubMed, OpenAlex, and arXiv
 """
 
 import requests
@@ -13,7 +13,7 @@ class ResearchClient:
     
     def __init__(self):
         self.pubmed_base = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
-        self.semantic_scholar_base = "https://api.semanticscholar.org/graph/v1"
+        self.openalex_base = "https://api.openalex.org"
         self.arxiv_base = "http://export.arxiv.org/api/query"
         self.request_delay = 0.1  # Rate limiting
         self.timeout = 30  # Increased timeout to 30 seconds
@@ -108,9 +108,9 @@ class ResearchClient:
             print(f"Error searching PubMed: {str(e)}")
             return []
     
-    def search_semantic_scholar(self, query: str, max_results: int = 50) -> List[Dict[str, Any]]:
+    def search_openalex(self, query: str, max_results: int = 50) -> List[Dict[str, Any]]:
         """
-        Search Semantic Scholar for papers
+        Search OpenAlex for papers
         
         Args:
             query: Search query
@@ -119,14 +119,14 @@ class ResearchClient:
         Returns:
             List of paper dictionaries
         """
-        data = None
         for attempt in range(self.max_retries + 1):
             try:
-                search_url = f"{self.semantic_scholar_base}/paper/search"
+                search_url = f"{self.openalex_base}/works"
                 params = {
-                    "query": query,
-                    "limit": min(max_results, 100),
-                    "fields": "title,abstract,url,year,authors,venue,citationCount"
+                    "search": query,
+                    "per_page": min(max_results, 200),  # OpenAlex allows up to 200 per page
+                    "page": 1,
+                    "sort": "relevance_score:desc"
                 }
                 
                 time.sleep(self.request_delay)
@@ -136,14 +136,27 @@ class ResearchClient:
                 break  # Success, exit retry loop
             except requests.exceptions.Timeout:
                 if attempt < self.max_retries:
-                    print(f"Semantic Scholar timeout, retrying ({attempt + 1}/{self.max_retries})...")
-                    time.sleep(1)  # Wait before retry
+                    print(f"OpenAlex timeout, retrying ({attempt + 1}/{self.max_retries})...")
+                    time.sleep(1)
                     continue
                 else:
-                    print(f"Error searching Semantic Scholar: Timeout after {self.max_retries + 1} attempts")
+                    print(f"Error searching OpenAlex: Timeout after {self.max_retries + 1} attempts")
+                    return []
+            except requests.exceptions.HTTPError as e:
+                if e.response.status_code == 429:  # Rate limit (unlikely but handle it)
+                    if attempt < self.max_retries:
+                        wait_time = 2 * (attempt + 1)  # Shorter backoff for OpenAlex
+                        print(f"OpenAlex rate limited (429), waiting {wait_time}s before retry ({attempt + 1}/{self.max_retries})...")
+                        time.sleep(wait_time)
+                        continue
+                    else:
+                        print(f"Error searching OpenAlex: Rate limited (429) after {self.max_retries + 1} attempts")
+                        return []
+                else:
+                    print(f"Error searching OpenAlex: HTTP {e.response.status_code}")
                     return []
             except Exception as e:
-                print(f"Error searching Semantic Scholar: {str(e)}")
+                print(f"Error searching OpenAlex: {str(e)}")
                 return []
         
         # Process the data if we got it
@@ -152,36 +165,61 @@ class ResearchClient:
         
         try:
             papers = []
-            paper_list = data.get("data") if data else None
-            if paper_list is None or not isinstance(paper_list, list):
+            results = data.get("results", [])
+            if not isinstance(results, list):
                 return []
             
-            for paper_data in paper_list[:max_results]:
+            for paper_data in results[:max_results]:
                 if not paper_data or not isinstance(paper_data, dict):
                     continue
                 
-                authors_list = paper_data.get("authors")
-                if authors_list is None:
-                    authors_list = []
-                elif not isinstance(authors_list, list):
-                    authors_list = []
+                # Extract authors
+                authors_list = paper_data.get("authorships", [])
+                authors = []
+                for authorship in authors_list:
+                    if isinstance(authorship, dict):
+                        author = authorship.get("author", {})
+                        if isinstance(author, dict):
+                            display_name = author.get("display_name", "")
+                            if display_name:
+                                authors.append(display_name)
+                
+                # Extract publication year
+                publication_date = paper_data.get("publication_date", "")
+                year = None
+                if publication_date:
+                    try:
+                        year = int(publication_date.split("-")[0])
+                    except:
+                        pass
+                
+                # Get primary location (venue/journal)
+                primary_location = paper_data.get("primary_location", {})
+                source = primary_location.get("source", {})
+                venue = source.get("display_name", "") if source else ""
+                
+                # Get abstract
+                abstract = paper_data.get("abstract", "")
+                # OpenAlex abstracts are sometimes inverted, check for that
+                if abstract and abstract.startswith("InvertedAbstract"):
+                    abstract = ""
                 
                 paper = {
                     "title": paper_data.get("title", ""),
-                    "abstract": paper_data.get("abstract", ""),
-                    "url": paper_data.get("url", ""),
-                    "year": paper_data.get("year"),
-                    "authors": [author.get("name", "") for author in authors_list if author and isinstance(author, dict)],
-                    "venue": paper_data.get("venue", ""),
-                    "citations": paper_data.get("citationCount", 0),
-                    "source": "semantic_scholar"
+                    "abstract": abstract,
+                    "url": paper_data.get("doi", "") or paper_data.get("id", ""),
+                    "year": year,
+                    "authors": authors,
+                    "venue": venue,
+                    "citations": paper_data.get("cited_by_count", 0),
+                    "source": "openalex"
                 }
                 papers.append(paper)
             
             return papers
             
         except Exception as e:
-            print(f"Error processing Semantic Scholar results: {str(e)}")
+            print(f"Error processing OpenAlex results: {str(e)}")
             return []
     
     def search_arxiv(self, query: str, max_results: int = 50) -> List[Dict[str, Any]]:
@@ -262,12 +300,12 @@ class ResearchClient:
         except Exception as e:
             print(f"PubMed search failed, continuing with other sources: {str(e)}")
         
-        # Search Semantic Scholar (AI/ML focus) - continue even if it fails
+        # Search OpenAlex (comprehensive academic papers) - continue even if it fails
         try:
-            semantic_papers = self.search_semantic_scholar(query, max_results_per_source)
-            all_papers.extend(semantic_papers)
+            openalex_papers = self.search_openalex(query, max_results_per_source)
+            all_papers.extend(openalex_papers)
         except Exception as e:
-            print(f"Semantic Scholar search failed, continuing with other sources: {str(e)}")
+            print(f"OpenAlex search failed, continuing with other sources: {str(e)}")
         
         # Search arXiv (preprints) - continue even if it fails
         try:
@@ -342,4 +380,5 @@ class ResearchClient:
             formatted.append(paper_str)
         
         return "\n\n".join(formatted)
+
 

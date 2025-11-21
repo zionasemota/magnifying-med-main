@@ -34,15 +34,18 @@ class BiasScorer:
         Returns:
             Score between 0 and 1
         """
-        summary = dataset_analysis.get("summary", {})
-        total = summary.get("total_datasets", 0)
-        with_labels = summary.get("datasets_with_race_labels", 0)
+        if not dataset_analysis or not isinstance(dataset_analysis, dict):
+            return 1.0
+        
+        summary = dataset_analysis.get("summary", {}) or {}
+        total = summary.get("total_datasets", 0) or 0
+        with_labels = summary.get("datasets_with_race_labels", 0) or 0
         
         if total == 0:
             return 1.0  # No datasets = worst case
         
         missing_ratio = 1.0 - (with_labels / total)
-        return min(missing_ratio, 1.0)
+        return min(max(missing_ratio, 0.0), 1.0)
     
     def compute_dark_skin_representation_score(self, dataset_analysis: Dict[str, Any]) -> float:
         """
@@ -92,16 +95,19 @@ class BiasScorer:
         Returns:
             Score between 0 and 1
         """
-        summary = subgroup_analysis.get("summary", {})
-        total = summary.get("total_studies", 0)
-        with_metrics = summary.get("studies_with_subgroup_metrics", 0)
-        no_reporting = subgroup_analysis.get("no_subgroup_reporting", 0)
+        if not subgroup_analysis or not isinstance(subgroup_analysis, dict):
+            return 1.0
+        
+        summary = subgroup_analysis.get("summary", {}) or {}
+        total = summary.get("total_studies", 0) or 0
+        with_metrics = summary.get("studies_with_subgroup_metrics", 0) or 0
+        no_reporting = subgroup_analysis.get("no_subgroup_reporting", 0) or 0
         
         if total == 0:
             return 1.0
         
         missing_ratio = no_reporting / total if no_reporting > 0 else (1.0 - (with_metrics / total))
-        return min(missing_ratio, 1.0)
+        return min(max(missing_ratio, 0.0), 1.0)
     
     def compute_geographic_concentration_score(self, dataset_analysis: Dict[str, Any],
                                               mitigation_analysis: Dict[str, Any]) -> float:
@@ -188,21 +194,21 @@ class BiasScorer:
         Returns:
             Dictionary with score, breakdown, and drivers
         """
-        # Compute individual scores
+        # Compute individual scores (ensure None values are handled)
         breakdown = {
-            "race_label_availability": self.compute_race_label_score(dataset_analysis),
-            "dark_skin_representation": self.compute_dark_skin_representation_score(dataset_analysis),
-            "subgroup_metrics": self.compute_subgroup_metrics_score(subgroup_analysis),
+            "race_label_availability": self.compute_race_label_score(dataset_analysis) or 0.0,
+            "dark_skin_representation": self.compute_dark_skin_representation_score(dataset_analysis) or 0.0,
+            "subgroup_metrics": self.compute_subgroup_metrics_score(subgroup_analysis) or 0.0,
             "geographic_concentration": self.compute_geographic_concentration_score(
                 dataset_analysis, mitigation_analysis
-            ),
-            "fairness_method_coverage": self.compute_fairness_method_score(mitigation_analysis),
-            "external_validation": self.compute_external_validation_score(mitigation_analysis)
+            ) or 0.0,
+            "fairness_method_coverage": self.compute_fairness_method_score(mitigation_analysis) or 0.0,
+            "external_validation": self.compute_external_validation_score(mitigation_analysis) or 0.0
         }
         
-        # Weighted sum
+        # Weighted sum (ensure all values are numeric)
         total_score = sum(
-            breakdown[key] * self.weights.get(key, 0.0)
+            (breakdown[key] or 0.0) * self.weights.get(key, 0.0)
             for key in breakdown
         )
         

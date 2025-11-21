@@ -86,6 +86,16 @@ class ConversationHandler:
             elif self.analysis_results:
                 return self._provide_mitigation_recommendations()
         
+        # Check if user is asking about specific topics (even if not a question)
+        if self.analysis_results:
+            input_lower = user_input.lower()
+            if any(term in input_lower for term in ["data imbalance", "data representation", "dataset"]):
+                return self._answer_about_data_imbalance()
+            if any(term in input_lower for term in ["performance", "subgroup", "gap"]):
+                return self._answer_about_performance()
+            if any(term in input_lower for term in ["paper", "study", "research"]):
+                return self._answer_about_papers()
+        
         # Default: acknowledge and offer options
         return self._default_response()
     
@@ -136,8 +146,14 @@ Return only the field name:"""
     
     def _is_follow_up(self, user_input: str) -> bool:
         """Check if user is asking a follow-up question"""
-        keywords = ["what", "how", "why", "when", "where", "can you", "show me", "tell me"]
-        return any(user_input.lower().startswith(keyword) for keyword in keywords)
+        input_lower = user_input.lower()
+        keywords = ["what", "how", "why", "when", "where", "can you", "show me", "tell me", 
+                   "can we", "talk about", "tell me about", "explain", "more about", 
+                   "what about", "discuss", "elaborate"]
+        # Check if starts with keyword or contains follow-up phrases
+        starts_with_keyword = any(input_lower.startswith(keyword) for keyword in keywords)
+        contains_followup = any(phrase in input_lower for phrase in ["talk more", "more about", "tell me more", "can we talk"])
+        return starts_with_keyword or contains_followup
     
     def _perform_analysis(self) -> str:
         """Perform the bias analysis"""
@@ -342,6 +358,21 @@ Format as a list with paper titles and brief descriptions of how they address bi
         """Handle follow-up questions"""
         input_lower = user_input.lower()
         
+        # If we have analysis results, use them to answer the question
+        if self.analysis_results:
+            # Check for specific topics they might be asking about
+            if any(term in input_lower for term in ["data imbalance", "data representation", "dataset", "race label"]):
+                return self._answer_about_data_imbalance()
+            
+            if any(term in input_lower for term in ["performance", "subgroup", "accuracy", "gap"]):
+                return self._answer_about_performance()
+            
+            if any(term in input_lower for term in ["mitigation", "fairness", "method", "solution"]):
+                return self._provide_mitigation_recommendations()
+            
+            if any(term in input_lower for term in ["paper", "study", "research", "citation"]):
+                return self._answer_about_papers()
+        
         # Handle specific follow-up patterns
         if "concerning" in input_lower or "that's" in input_lower:
             if self.analysis_results:
@@ -350,7 +381,6 @@ Format as a list with paper titles and brief descriptions of how they address bi
                     "disease is diagnosed and treated. When clinical norms are built from biased datasets, "
                     "the AI inherits and amplifies those biases."
                 )
-                
                 self.context_manager.add_assistant_response(response)
                 return response
         
@@ -358,20 +388,130 @@ Format as a list with paper titles and brief descriptions of how they address bi
             if "focus" in input_lower or "study" in input_lower or "reduce" in input_lower:
                 return self._provide_mitigation_recommendations()
         
-        # Use LLM to generate contextual response for other questions
+        # Use LLM to generate contextual response with analysis results
         conversation_summary = self.context_manager.get_conversation_summary()
+        
+        # Include analysis results in the prompt if available
+        analysis_context = ""
+        if self.analysis_results:
+            import json
+            analysis_context = f"""
+Previous Analysis Results:
+- Scope: {self.analysis_results.get('scope', 'N/A')}
+- Bias Score: {self.analysis_results.get('score_results', {}).get('score', 'N/A')}
+- Key Findings: {json.dumps(self.analysis_results.get('score_results', {}).get('drivers', []), indent=2)}
+- Dataset Summary: {json.dumps(self.analysis_results.get('dataset_analysis', {}).get('summary', {}), indent=2)}
+"""
         
         prompt = f"""Based on this conversation about racial bias in medical AI research:
 
 {conversation_summary}
+{analysis_context}
 
 User question: {user_input}
 
-Provide a helpful, concise response. If the user is asking about specific mitigation methods, bias aspects, or wants to see papers, provide that information. Keep responses conversational and natural."""
+Provide a helpful, detailed response based on the analysis results above. Reference specific findings, numbers, and data from the analysis. If the user is asking about:
+- Data imbalance: Explain the dataset composition issues found
+- Performance gaps: Explain subgroup performance disparities
+- Mitigation methods: Provide specific recommendations
+- Papers: Reference the papers found in the analysis
+
+Keep responses conversational, informative, and grounded in the actual analysis data."""
 
         response = self.llm_client.generate_response(prompt, temperature=0.7)
         self.context_manager.add_assistant_response(response)
         return response
+    
+    def _answer_about_data_imbalance(self) -> str:
+        """Provide detailed answer about data imbalance from analysis"""
+        if not self.analysis_results:
+            return "I need to perform an analysis first. What medical field would you like me to analyze?"
+        
+        dataset_analysis = self.analysis_results.get("dataset_analysis", {})
+        summary = dataset_analysis.get("summary", {})
+        score_results = self.analysis_results.get("score_results", {})
+        
+        total = summary.get("total_datasets", 0)
+        with_labels = summary.get("datasets_with_race_labels", 0)
+        dark_skin_prop = summary.get("avg_dark_skin_proportion", 0.0)
+        minority_rep = summary.get("avg_minority_representation", 0.0)
+        
+        import json
+        prompt = f"""Based on the analysis of {self.analysis_results.get('scope', 'medical AI')}, provide a detailed explanation about data imbalance issues found.
+
+Analysis Data:
+- Total datasets analyzed: {total}
+- Datasets with race labels: {with_labels}
+- Average dark skin proportion: {dark_skin_prop*100:.1f}% (target: 25%)
+- Average minority representation: {minority_rep*100:.1f}% (target: 25%)
+- Bias score breakdown: {json.dumps(score_results.get('breakdown', {}), indent=2)}
+
+Explain:
+1. What data imbalance means in this context
+2. Specific issues found in the analysis
+3. Why this matters for racial bias
+4. How it affects model performance
+
+Be specific, reference the numbers, and make it informative."""
+        
+        response = self.llm_client.generate_response(prompt, temperature=0.7)
+        self.context_manager.add_assistant_response(response)
+        return response
+    
+    def _answer_about_performance(self) -> str:
+        """Provide detailed answer about performance gaps from analysis"""
+        if not self.analysis_results:
+            return "I need to perform an analysis first. What medical field would you like me to analyze?"
+        
+        subgroup_analysis = self.analysis_results.get("subgroup_analysis", {})
+        summary = subgroup_analysis.get("summary", {})
+        
+        total = summary.get("total_studies", 0)
+        with_metrics = summary.get("studies_with_subgroup_metrics", 0)
+        avg_gap = summary.get("avg_performance_gap", 0.0)
+        
+        import json
+        prompt = f"""Based on the analysis of {self.analysis_results.get('scope', 'medical AI')}, provide a detailed explanation about performance gaps between different racial/ethnic groups.
+
+Analysis Data:
+- Total studies analyzed: {total}
+- Studies reporting subgroup metrics: {with_metrics}
+- Average performance gap: {avg_gap*100:.1f}%
+- Common gaps: {json.dumps(summary.get('common_gaps', []), indent=2)}
+
+Explain:
+1. What performance gaps mean in medical AI
+2. Specific disparities found in the analysis
+3. Why these gaps occur
+4. Impact on patient outcomes
+
+Be specific, reference the numbers, and make it informative."""
+        
+        response = self.llm_client.generate_response(prompt, temperature=0.7)
+        self.context_manager.add_assistant_response(response)
+        return response
+    
+    def _answer_about_papers(self) -> str:
+        """Provide information about papers from analysis"""
+        if not self.analysis_results:
+            return "I need to perform an analysis first. What medical field would you like me to analyze?"
+        
+        # Collect papers from all analyses
+        all_papers = []
+        for analysis_type in ["dataset_analysis", "subgroup_analysis", "mitigation_analysis"]:
+            analysis = self.analysis_results.get(analysis_type, {})
+            papers = analysis.get("real_papers", [])
+            all_papers.extend(papers[:5])  # Top 5 from each
+        
+        if not all_papers:
+            return "I found papers during the analysis, but couldn't retrieve their details. Would you like me to provide mitigation recommendations instead?"
+        
+        papers_text = "\n".join([
+            f"- {p.get('title', 'Unknown')} ({p.get('year', 'N/A')}) - {p.get('url', 'No URL')}"
+            for p in all_papers[:10]
+        ])
+        
+        return f"Based on my analysis of {self.analysis_results.get('scope', 'medical AI')}, here are relevant papers I found:\n\n{papers_text}\n\nWould you like more details about any specific aspect of the analysis?"
     
     def _default_response(self) -> str:
         """Default response when intent is unclear - be proactive"""
