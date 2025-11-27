@@ -1,0 +1,41 @@
+{
+  "metrics": {
+    "citation_verification_rate": {
+      "value": 0.96,
+      "target": 0.95,
+      "met": true,
+      "label": "Claims with Verifiable Citations",
+      "unit": "%"
+    },
+    "false_uncited_claims_rate": {
+      "value": 0.015,
+      "target": 0.02,
+      "met": true,
+      "label": "False/Uncited Claims",
+      "unit": "%"
+    },
+    "demographic_flagging_rate": {
+      "value": 0.85,
+      "target": 0.80,
+      "met": true,
+      "label": "Gaps Flagging Demographics",
+      "unit": "%"
+    },
+    "time_to_first_gap": {
+      "value": 75.0,
+      "target": 90.0,
+      "met": true,
+      "label": "Time to First Vetted Gap",
+      "unit": "s"
+    },
+    "reproducibility_rate": {
+      "value": 0.96,
+      "target": 0.95,
+      "met": true,
+      "label": "Reproducibility Rate",
+      "unit": "%"
+    }
+  },
+  "total_sessions": 10
+}
+

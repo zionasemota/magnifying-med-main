@@ -3,6 +3,7 @@ Main conversation handler for MagnifyingMed
 """
 
 import json
+import time
 from typing import Dict, Any, Optional, List
 from .context_manager import ContextManager
 from .llm_client import LLMClient
@@ -13,15 +14,32 @@ from .prompts import (
 )
 from .config import SCORE_WEIGHTS, BIAS_SCORE_THRESHOLD
 
+# Handle imports for metrics tracking
+try:
+    from .metrics import MetricsTracker
+    from .metrics_extractor import MetricsExtractor
+except ImportError:
+    from metrics import MetricsTracker
+    from metrics_extractor import MetricsExtractor
+
 
 class ConversationHandler:
     """Handles the main conversation flow"""
     
-    def __init__(self, llm_client: Optional[LLMClient] = None, scorer: Optional[BiasScorer] = None):
+    def __init__(self, llm_client: Optional[LLMClient] = None, scorer: Optional[BiasScorer] = None,
+                 enable_metrics_tracking: bool = True):
         self.context_manager = ContextManager()
         self.llm_client = llm_client or LLMClient()
         self.scorer = scorer or BiasScorer(weights=SCORE_WEIGHTS, threshold=BIAS_SCORE_THRESHOLD)
         self.analysis_results: Optional[Dict[str, Any]] = None
+        
+        # Metrics tracking (doesn't change conversation behavior)
+        self.enable_metrics_tracking = enable_metrics_tracking
+        if self.enable_metrics_tracking:
+            self.metrics_tracker = MetricsTracker()
+            self.metrics_extractor = MetricsExtractor()
+            self.session_start_time = None
+            self.first_query_time = None
     
     def handle_message(self, user_input: str) -> str:
         """
@@ -33,8 +51,22 @@ class ConversationHandler:
         Returns:
             Assistant's response
         """
+        # Track metrics: start session if first message
+        if self.enable_metrics_tracking and not self.session_start_time:
+            session_id = f"session_{int(time.time())}"
+            self.metrics_tracker.start_session(session_id)
+            self.session_start_time = time.time()
+            self.first_query_time = time.time()
+        
+        # Track metrics: record first query time
+        if self.enable_metrics_tracking and self.first_query_time is None:
+            self.first_query_time = time.time()
+        
         # Update context
         self.context_manager.update_context(user_input)
+        
+        # Record response time start
+        response_start_time = time.time()
         
         input_lower = user_input.lower()
         
@@ -43,7 +75,11 @@ class ConversationHandler:
             # Check if user explicitly doesn't want analysis yet
             if not any(word in input_lower for word in ["wait", "not yet", "don't", "no", "later"]):
                 # Proceed with analysis immediately
-                return self._perform_analysis()
+                response = self._perform_analysis()
+                if self.enable_metrics_tracking:
+                    response_time = time.time() - response_start_time
+                    self._track_response_metrics(response, response_time)
+                return response
         
         # Handle special responses first
         if "all of them" in input_lower or "all" in input_lower:
@@ -51,7 +87,11 @@ class ConversationHandler:
                 # User wants analysis of all bias aspects
                 self.context_manager.context["bias_aspects"] = ["all"]
                 if self.context_manager.has_sufficient_context():
-                    return self._perform_analysis()
+                    response = self._perform_analysis()
+                    if self.enable_metrics_tracking:
+                        response_time = time.time() - response_start_time
+                        self._track_response_metrics(response, response_time)
+                    return response
         
         # Check if we have sufficient context
         if not self.context_manager.has_sufficient_context():
@@ -62,42 +102,81 @@ class ConversationHandler:
                     self.context_manager.context["medical_field"] = extracted
                     # If we now have enough, proceed
                     if self.context_manager.has_sufficient_context():
-                        return self._perform_analysis()
+                        response = self._perform_analysis()
+                        if self.enable_metrics_tracking:
+                            response_time = time.time() - response_start_time
+                            self._track_response_metrics(response, response_time)
+                        return response
             
             # Only ask one simple question if we really need it
-            return self._ask_for_medical_field_only()
+            response = self._ask_for_medical_field_only()
+            if self.enable_metrics_tracking:
+                response_time = time.time() - response_start_time
+                self._track_response_metrics(response, response_time)
+            return response
         
         # Check if user is asking for analysis
         if self._is_analysis_request(user_input):
-            return self._perform_analysis()
+            response = self._perform_analysis()
+            if self.enable_metrics_tracking:
+                response_time = time.time() - response_start_time
+                self._track_response_metrics(response, response_time)
+            return response
         
         # Check if user is asking for mitigation methods
         if self._is_mitigation_request(user_input):
-            return self._provide_mitigation_recommendations()
+            response = self._provide_mitigation_recommendations()
+            if self.enable_metrics_tracking:
+                response_time = time.time() - response_start_time
+                self._track_response_metrics(response, response_time)
+            return response
         
         # Check if user is asking follow-up questions
         if self._is_follow_up(user_input):
-            return self._handle_follow_up(user_input)
+            response = self._handle_follow_up(user_input)
+            if self.enable_metrics_tracking:
+                response_time = time.time() - response_start_time
+                self._track_response_metrics(response, response_time)
+            return response
         
         # Handle "yes" responses
         if input_lower in ["yes", "y", "yeah", "sure", "please"]:
             if "mitigation" in self.context_manager.conversation_history[-2].get("content", "").lower() if len(self.context_manager.conversation_history) > 1 else "":
-                return self._provide_mitigation_recommendations()
+                response = self._provide_mitigation_recommendations()
             elif self.analysis_results:
-                return self._provide_mitigation_recommendations()
+                response = self._provide_mitigation_recommendations()
+            else:
+                response = self._default_response()
+            if self.enable_metrics_tracking:
+                response_time = time.time() - response_start_time
+                self._track_response_metrics(response, response_time)
+            return response
         
         # Check if user is asking about specific topics (even if not a question)
         if self.analysis_results:
             input_lower = user_input.lower()
             if any(term in input_lower for term in ["data imbalance", "data representation", "dataset"]):
-                return self._answer_about_data_imbalance()
-            if any(term in input_lower for term in ["performance", "subgroup", "gap"]):
-                return self._answer_about_performance()
-            if any(term in input_lower for term in ["paper", "study", "research"]):
-                return self._answer_about_papers()
+                response = self._answer_about_data_imbalance()
+            elif any(term in input_lower for term in ["performance", "subgroup", "gap"]):
+                response = self._answer_about_performance()
+            elif any(term in input_lower for term in ["paper", "study", "research"]):
+                response = self._answer_about_papers()
+            else:
+                response = self._default_response()
+            if self.enable_metrics_tracking:
+                response_time = time.time() - response_start_time
+                self._track_response_metrics(response, response_time)
+            return response
         
         # Default: acknowledge and offer options
-        return self._default_response()
+        response = self._default_response()
+        
+        # Track metrics: extract metrics from response
+        if self.enable_metrics_tracking:
+            response_time = time.time() - response_start_time
+            self._track_response_metrics(response, response_time)
+        
+        return response
     
     def _ask_for_medical_field_only(self) -> str:
         """Ask only for medical field - be direct and brief"""
@@ -534,4 +613,46 @@ Be specific, reference the numbers, and make it informative."""
     def get_greeting(self) -> str:
         """Get the initial greeting"""
         return INITIAL_GREETING
+    
+    def _track_response_metrics(self, response: str, response_time: float):
+        """Track metrics from LLM response without changing conversation behavior"""
+        if not self.enable_metrics_tracking:
+            return
+        
+        # Record response time
+        self.metrics_tracker.record_response_time(response_time)
+        
+        # Extract claims with citations
+        claims = self.metrics_extractor.extract_claims_with_citations(response)
+        for claim_data in claims:
+            is_verified = self.metrics_extractor.check_claim_verification(
+                claim_data["claim"], claim_data.get("citations", [])
+            )
+            self.metrics_tracker.record_claim(
+                claim_data["claim"],
+                claim_data["has_citation"],
+                is_verified
+            )
+        
+        # Extract gaps
+        gaps = self.metrics_extractor.extract_gaps(response, self.analysis_results)
+        for gap_data in gaps:
+            self.metrics_tracker.record_gap(
+                gap_data["description"],
+                gap_data["flags_demographic"],
+                gap_data["flags_geographic"],
+                gap_data["has_sources"]
+            )
+    
+    def end_session(self) -> Dict[str, Any]:
+        """End the current session and return metrics"""
+        if self.enable_metrics_tracking:
+            return self.metrics_tracker.end_session()
+        return {}
+    
+    def get_metrics_history(self) -> List[Dict[str, Any]]:
+        """Get all metrics history"""
+        if self.enable_metrics_tracking:
+            return self.metrics_tracker.metrics_history
+        return []
 
