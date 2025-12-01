@@ -1,0 +1,22 @@
+[
+  [
+    "analyze bias in dermatology. Please cite specific papers with [1], [2] format or URLs when making claims",
+    "what are the demographic and geographic gaps? Include citations for each gap mentioned"
+  ],
+  [
+    "analyze bias in cardiology. Reference specific research papers with citations [1], [2] or paper titles and URLs",
+    "show me mitigation methods with citations to papers that used them"
+  ],
+  [
+    "analyze bias in radiology. For each finding, cite the source paper with format (Author et al., Year) or [number]"
+  ],
+  [
+    "What racial and demographic biases exist in dermatology datasets? Cite each claim with paper titles and URLs or [1], [2] format",
+    "What geographic representation gaps exist? Include specific citations for each gap"
+  ],
+  [
+    "Analyze cardiology AI bias including racial, ethnic, and geographic under-representation. Cite sources in [1], [2] format",
+    "What mitigation methods address demographic gaps? Provide citations"
+  ]
+]
+

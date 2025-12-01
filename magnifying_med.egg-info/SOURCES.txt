@@ -1,0 +1,7 @@
+README.md
+setup.py
+magnifying_med.egg-info/PKG-INFO
+magnifying_med.egg-info/SOURCES.txt
+magnifying_med.egg-info/dependency_links.txt
+magnifying_med.egg-info/requires.txt
+magnifying_med.egg-info/top_level.txt

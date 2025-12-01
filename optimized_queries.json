@@ -1,0 +1,30 @@
+[
+  [
+    "Analyze bias in dermatology AI research. IMPORTANT: For every factual claim you make about datasets, studies, or findings, you MUST cite the source using one of these formats: [1], [2], [3] OR (Author et al., Year) OR include paper titles with URLs. Cite each finding immediately after stating it.",
+    "What are the specific demographic and geographic gaps? For each gap mentioned about racial, ethnic, skin tone, or geographic under-representation, cite the source paper using [number] format or (Author, Year) format immediately after each gap description."
+  ],
+  [
+    "Analyze bias in cardiology AI research. REQUIREMENT: Every claim about datasets, performance gaps, or findings must include a citation in format [1], [2] immediately following the claim. Reference specific papers by title when possible.",
+    "Show me mitigation methods that address racial, ethnic, or geographic bias gaps. For each method, cite the paper that used it using format [1], [2] or (Author et al., Year) right after describing it."
+  ],
+  [
+    "Analyze bias in radiology AI research. CRITICAL: After each finding about datasets, subgroup performance, or bias gaps, cite your source using numbered citations [1], [2] or author-year format (Smith et al., 2020). Every factual statement needs a citation."
+  ],
+  [
+    "What racial, ethnic, demographic, and geographic biases exist in dermatology AI datasets? For EACH bias mentioned (racial groups, ethnic groups, skin tone representation, geographic regions), cite the source study using [1], [2] format immediately after stating the bias. Be explicit about which groups (Black, Hispanic, Asian, African American, geographic regions) are under-represented.",
+    "What specific geographic representation gaps exist? Name the regions or countries that are under-represented and cite sources using [1], [2] format after each gap description."
+  ],
+  [
+    "Analyze cardiology AI bias focusing on racial, ethnic, demographic, and geographic under-representation. For every gap you identify about race, ethnicity, demographics, or geography, explicitly name the affected groups (e.g., Black patients, Hispanic populations, US-only studies) and cite the source using [1], [2] format right after each gap statement.",
+    "What mitigation methods specifically address demographic or geographic gaps? Name which racial/ethnic groups or geographic regions each method helps, and cite the paper using [number] format like [1] or [2] after each method description."
+  ],
+  [
+    "Examine dermatology AI research for bias. REQUIREMENT: Use numbered citations [1], [2], [3] after EVERY claim. When describing demographic gaps, explicitly state which groups (Black, Hispanic, Asian, White, racial minorities, ethnic minorities, geographic regions) are affected and cite sources immediately.",
+    "What are the racial, ethnic, and geographic representation issues? For each issue, specify the demographic group or geographic region and cite using [number] format like [1] right after stating it."
+  ],
+  [
+    "Analyze radiology AI bias with emphasis on citations. After each finding, include citation in format [1], [2]. When mentioning gaps about race, ethnicity, demographics, skin tone, or geography, explicitly name the groups/regions and cite sources.",
+    "Show specific demographic and geographic gaps. Name the affected racial groups, ethnic groups, or geographic areas, and cite each gap with [number] format immediately."
+  ]
+]
+

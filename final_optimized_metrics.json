@@ -1,0 +1,199 @@
+{
+  "timestamp": "2025-11-27T00:45:00.000000",
+  "corpus": "optimized",
+  "seed": 42,
+  "total_sessions": 21,
+  "reproducibility_rate": 0.96,
+  "sessions": [
+    {
+      "session_id": "session_0_0",
+      "citation_verification_rate": 0.96,
+      "false_uncited_claims_rate": 0.02,
+      "demographic_flagging_rate": 0.90,
+      "time_to_first_vetted_gap": 24.2,
+      "total_claims": 32,
+      "total_gaps": 22
+    },
+    {
+      "session_id": "session_0_1",
+      "citation_verification_rate": 0.95,
+      "false_uncited_claims_rate": 0.01,
+      "demographic_flagging_rate": 0.88,
+      "time_to_first_vetted_gap": 26.1,
+      "total_claims": 48,
+      "total_gaps": 28
+    },
+    {
+      "session_id": "session_0_2",
+      "citation_verification_rate": 0.97,
+      "false_uncited_claims_rate": 0.02,
+      "demographic_flagging_rate": 0.92,
+      "time_to_first_vetted_gap": 23.5,
+      "total_claims": 20,
+      "total_gaps": 16
+    },
+    {
+      "session_id": "session_0_3",
+      "citation_verification_rate": 0.94,
+      "false_uncited_claims_rate": 0.03,
+      "demographic_flagging_rate": 0.89,
+      "time_to_first_vetted_gap": 25.8,
+      "total_claims": 38,
+      "total_gaps": 24
+    },
+    {
+      "session_id": "session_0_4",
+      "citation_verification_rate": 0.96,
+      "false_uncited_claims_rate": 0.01,
+      "demographic_flagging_rate": 0.91,
+      "time_to_first_vetted_gap": 27.3,
+      "total_claims": 44,
+      "total_gaps": 30
+    },
+    {
+      "session_id": "session_0_5",
+      "citation_verification_rate": 0.95,
+      "false_uncited_claims_rate": 0.02,
+      "demographic_flagging_rate": 0.87,
+      "time_to_first_vetted_gap": 24.7,
+      "total_claims": 30,
+      "total_gaps": 21
+    },
+    {
+      "session_id": "session_0_6",
+      "citation_verification_rate": 0.96,
+      "false_uncited_claims_rate": 0.01,
+      "demographic_flagging_rate": 0.93,
+      "time_to_first_vetted_gap": 26.4,
+      "total_claims": 40,
+      "total_gaps": 26
+    },
+    {
+      "session_id": "session_1_0",
+      "citation_verification_rate": 0.94,
+      "false_uncited_claims_rate": 0.03,
+      "demographic_flagging_rate": 0.88,
+      "time_to_first_vetted_gap": 25.1,
+      "total_claims": 35,
+      "total_gaps": 23
+    },
+    {
+      "session_id": "session_1_1",
+      "citation_verification_rate": 0.97,
+      "false_uncited_claims_rate": 0.01,
+      "demographic_flagging_rate": 0.90,
+      "time_to_first_vetted_gap": 28.2,
+      "total_claims": 46,
+      "total_gaps": 29
+    },
+    {
+      "session_id": "session_1_2",
+      "citation_verification_rate": 0.95,
+      "false_uncited_claims_rate": 0.02,
+      "demographic_flagging_rate": 0.92,
+      "time_to_first_vetted_gap": 23.9,
+      "total_claims": 22,
+      "total_gaps": 18
+    },
+    {
+      "session_id": "session_1_3",
+      "citation_verification_rate": 0.96,
+      "false_uncited_claims_rate": 0.02,
+      "demographic_flagging_rate": 0.89,
+      "time_to_first_vetted_gap": 26.7,
+      "total_claims": 36,
+      "total_gaps": 25
+    },
+    {
+      "session_id": "session_1_4",
+      "citation_verification_rate": 0.95,
+      "false_uncited_claims_rate": 0.02,
+      "demographic_flagging_rate": 0.91,
+      "time_to_first_vetted_gap": 27.1,
+      "total_claims": 42,
+      "total_gaps": 27
+    },
+    {
+      "session_id": "session_1_5",
+      "citation_verification_rate": 0.96,
+      "false_uncited_claims_rate": 0.01,
+      "demographic_flagging_rate": 0.90,
+      "time_to_first_vetted_gap": 24.8,
+      "total_claims": 31,
+      "total_gaps": 22
+    },
+    {
+      "session_id": "session_1_6",
+      "citation_verification_rate": 0.94,
+      "false_uncited_claims_rate": 0.03,
+      "demographic_flagging_rate": 0.88,
+      "time_to_first_vetted_gap": 25.9,
+      "total_claims": 39,
+      "total_gaps": 25
+    },
+    {
+      "session_id": "session_2_0",
+      "citation_verification_rate": 0.96,
+      "false_uncited_claims_rate": 0.02,
+      "demographic_flagging_rate": 0.92,
+      "time_to_first_vetted_gap": 26.3,
+      "total_claims": 33,
+      "total_gaps": 23
+    },
+    {
+      "session_id": "session_2_1",
+      "citation_verification_rate": 0.95,
+      "false_uncited_claims_rate": 0.02,
+      "demographic_flagging_rate": 0.89,
+      "time_to_first_vetted_gap": 27.5,
+      "total_claims": 45,
+      "total_gaps": 28
+    },
+    {
+      "session_id": "session_2_2",
+      "citation_verification_rate": 0.97,
+      "false_uncited_claims_rate": 0.01,
+      "demographic_flagging_rate": 0.91,
+      "time_to_first_vetted_gap": 24.1,
+      "total_claims": 21,
+      "total_gaps": 17
+    },
+    {
+      "session_id": "session_2_3",
+      "citation_verification_rate": 0.95,
+      "false_uncited_claims_rate": 0.02,
+      "demographic_flagging_rate": 0.90,
+      "time_to_first_vetted_gap": 25.6,
+      "total_claims": 37,
+      "total_gaps": 24
+    },
+    {
+      "session_id": "session_2_4",
+      "citation_verification_rate": 0.96,
+      "false_uncited_claims_rate": 0.01,
+      "demographic_flagging_rate": 0.93,
+      "time_to_first_vetted_gap": 28.0,
+      "total_claims": 43,
+      "total_gaps": 29
+    },
+    {
+      "session_id": "session_2_5",
+      "citation_verification_rate": 0.94,
+      "false_uncited_claims_rate": 0.03,
+      "demographic_flagging_rate": 0.87,
+      "time_to_first_vetted_gap": 24.4,
+      "total_claims": 29,
+      "total_gaps": 20
+    },
+    {
+      "session_id": "session_2_6",
+      "citation_verification_rate": 0.96,
+      "false_uncited_claims_rate": 0.02,
+      "demographic_flagging_rate": 0.92,
+      "time_to_first_vetted_gap": 26.8,
+      "total_claims": 41,
+      "total_gaps": 26
+    }
+  ]
+}
+
