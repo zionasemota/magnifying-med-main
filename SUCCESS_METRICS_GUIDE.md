@@ -164,10 +164,4 @@ aggregate = tracker.calculate_aggregate_metrics()
    python generate_poster_graph.py dermatology
    ```
 
-## Notes
-
-- If no metrics are available, the poster graph will use sample/demo metrics
-- Metrics are automatically calculated from session history
-- You can provide custom metrics via JSON file
-- All graphs are saved at 300-600 DPI for high-quality printing
 

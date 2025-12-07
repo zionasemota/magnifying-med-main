@@ -123,6 +123,22 @@ class ConversationHandler:
                 self._track_response_metrics(response, response_time)
             return response
         
+        # Check for paper requests FIRST (before mitigation, since "address" might match both)
+        if self.analysis_results:
+            paper_phrases = ["show", "list", "provide", "give", "find", "recommend", "suggest", "share", "see"]
+            paper_terms = ["paper", "study", "research", "citation", "publication", "article"]
+            is_paper_request = (
+                any(phrase in input_lower for phrase in paper_phrases) and 
+                any(term in input_lower for term in paper_terms)
+            ) or any(term in input_lower for term in ["papers", "studies", "research papers", "recent papers"])
+            
+            if is_paper_request:
+                response = self._answer_about_papers()
+                if self.enable_metrics_tracking:
+                    response_time = time.time() - response_start_time
+                    self._track_response_metrics(response, response_time)
+                return response
+        
         # Check if user is asking for mitigation methods
         if self._is_mitigation_request(user_input):
             response = self._provide_mitigation_recommendations()
@@ -155,12 +171,24 @@ class ConversationHandler:
         # Check if user is asking about specific topics (even if not a question)
         if self.analysis_results:
             input_lower = user_input.lower()
-            if any(term in input_lower for term in ["data imbalance", "data representation", "dataset"]):
+            # Check for papers first (more specific intent) - prioritize explicit paper requests
+            paper_phrases = ["show", "list", "provide", "give", "find", "recommend", "suggest", "share", "see"]
+            paper_terms = ["paper", "study", "research", "citation", "publication", "article"]
+            
+            is_paper_request = (
+                any(phrase in input_lower for phrase in paper_phrases) and 
+                any(term in input_lower for term in paper_terms)
+            ) or (
+                # Also catch if they just say "papers" or "studies" directly
+                any(term in input_lower for term in ["papers", "studies", "research papers", "recent papers"])
+            )
+            
+            if is_paper_request:
+                response = self._answer_about_papers()
+            elif any(term in input_lower for term in ["data imbalance", "data representation", "dataset"]):
                 response = self._answer_about_data_imbalance()
             elif any(term in input_lower for term in ["performance", "subgroup", "gap"]):
                 response = self._answer_about_performance()
-            elif any(term in input_lower for term in ["paper", "study", "research"]):
-                response = self._answer_about_papers()
             else:
                 response = self._default_response()
             if self.enable_metrics_tracking:
@@ -209,18 +237,52 @@ Return only the field name:"""
     
     def _is_analysis_request(self, user_input: str) -> bool:
         """Check if user is requesting analysis"""
-        keywords = ["analyze", "find", "identify", "look at", "study", "examine", "check", 
-                   "help", "can you", "areas", "gaps", "bias"]
         input_lower = user_input.lower()
+        
+        # Exclude paper requests - if asking for papers, it's not an analysis request
+        paper_terms = ["paper", "study", "research", "citation", "publication", "article"]
+        paper_phrases = ["show", "list", "provide", "give", "find", "recommend", "suggest", "share", "see"]
+        is_paper_request = (
+            any(phrase in input_lower for phrase in paper_phrases) and 
+            any(term in input_lower for term in paper_terms)
+        ) or any(term in input_lower for term in ["papers", "studies", "research papers", "recent papers"])
+        
+        if is_paper_request:
+            return False
+        
+        keywords = ["analyze", "find", "identify", "look at", "examine", "check", 
+                   "help", "can you", "areas", "bias"]
         # Check if it's a question about bias/research areas
-        if any(keyword in input_lower for keyword in ["bias", "areas", "gaps", "under-explored"]):
+        if any(keyword in input_lower for keyword in ["bias", "areas", "under-explored"]):
             if any(qword in input_lower for qword in ["find", "identify", "help", "what", "where"]):
+                return True
+        # Check for "gaps" but only if not asking for papers
+        if "gaps" in input_lower and not is_paper_request:
+            if any(qword in input_lower for qword in ["find", "identify", "help", "what", "where", "analyze"]):
                 return True
         return any(keyword in input_lower for keyword in keywords) and self.context_manager.has_sufficient_context()
     
     def _is_mitigation_request(self, user_input: str) -> bool:
         """Check if user is asking for mitigation methods"""
+        input_lower = user_input.lower()
+        
+        # Exclude paper requests - if asking for papers, it's not a mitigation request
+        paper_terms = ["paper", "study", "research", "citation", "publication", "article"]
+        paper_phrases = ["show", "list", "provide", "give", "find", "recommend", "suggest", "share", "see"]
+        is_paper_request = (
+            any(phrase in input_lower for phrase in paper_phrases) and 
+            any(term in input_lower for term in paper_terms)
+        ) or any(term in input_lower for term in ["papers", "studies", "research papers", "recent papers"])
+        
+        if is_paper_request:
+            return False
+        
         keywords = ["mitigation", "method", "solution", "address", "reduce", "fix", "improve"]
+        # Only match "address" if it's not part of a paper request
+        if "address" in input_lower and not is_paper_request:
+            # Check if "address" is used in context of papers/research
+            if any(term in input_lower for term in ["paper", "study", "research", "that address"]):
+                return False
         return any(keyword in user_input.lower() for keyword in keywords)
     
     def _is_follow_up(self, user_input: str) -> bool:
@@ -439,18 +501,33 @@ Format as a list with paper titles and brief descriptions of how they address bi
         
         # If we have analysis results, use them to answer the question
         if self.analysis_results:
+            # Check for papers first (more specific intent) - prioritize explicit paper requests
+            # Check for phrases that explicitly request papers
+            paper_phrases = ["show", "list", "provide", "give", "find", "recommend", "suggest", "share", "see"]
+            paper_terms = ["paper", "study", "research", "citation", "publication", "article"]
+            
+            is_paper_request = (
+                any(phrase in input_lower for phrase in paper_phrases) and 
+                any(term in input_lower for term in paper_terms)
+            ) or (
+                # Also catch if they just say "papers" or "studies" directly
+                any(term in input_lower for term in ["papers", "studies", "research papers", "recent papers"])
+            )
+            
+            if is_paper_request:
+                return self._answer_about_papers()
+            
             # Check for specific topics they might be asking about
             if any(term in input_lower for term in ["data imbalance", "data representation", "dataset", "race label"]):
                 return self._answer_about_data_imbalance()
             
-            if any(term in input_lower for term in ["performance", "subgroup", "accuracy", "gap"]):
-                return self._answer_about_performance()
+            # Check for performance/gap - but only if NOT asking for papers
+            if not any(term in input_lower for term in paper_terms):
+                if any(term in input_lower for term in ["performance", "subgroup", "accuracy", "gap"]):
+                    return self._answer_about_performance()
             
             if any(term in input_lower for term in ["mitigation", "fairness", "method", "solution"]):
                 return self._provide_mitigation_recommendations()
-            
-            if any(term in input_lower for term in ["paper", "study", "research", "citation"]):
-                return self._answer_about_papers()
         
         # Handle specific follow-up patterns
         if "concerning" in input_lower or "that's" in input_lower:
@@ -467,7 +544,18 @@ Format as a list with paper titles and brief descriptions of how they address bi
             if "focus" in input_lower or "study" in input_lower or "reduce" in input_lower:
                 return self._provide_mitigation_recommendations()
         
-        # Use LLM to generate contextual response with analysis results
+        # Final fallback: Use LLM to generate contextual response with analysis results
+        # But first, double-check if this is a paper request that we missed
+        paper_phrases = ["show", "list", "provide", "give", "find", "recommend", "suggest", "share", "see"]
+        paper_terms = ["paper", "study", "research", "citation", "publication", "article"]
+        is_paper_request = (
+            any(phrase in input_lower for phrase in paper_phrases) and 
+            any(term in input_lower for term in paper_terms)
+        ) or any(term in input_lower for term in ["papers", "studies", "research papers", "recent papers"])
+        
+        if is_paper_request and self.analysis_results:
+            return self._answer_about_papers()
+        
         conversation_summary = self.context_manager.get_conversation_summary()
         
         # Include analysis results in the prompt if available
@@ -575,6 +663,9 @@ Be specific, reference the numbers, and make it informative."""
         if not self.analysis_results:
             return "I need to perform an analysis first. What medical field would you like me to analyze?"
         
+        scope = self.context_manager.get_scope()
+        years = self.context_manager.get_time_range()
+        
         # Collect papers from all analyses
         all_papers = []
         for analysis_type in ["dataset_analysis", "subgroup_analysis", "mitigation_analysis"]:
@@ -582,15 +673,54 @@ Be specific, reference the numbers, and make it informative."""
             papers = analysis.get("real_papers", [])
             all_papers.extend(papers[:5])  # Top 5 from each
         
-        if not all_papers:
-            return "I found papers during the analysis, but couldn't retrieve their details. Would you like me to provide mitigation recommendations instead?"
+        if all_papers:
+            # Format found papers
+            papers_text = "\n".join([
+                f"- {p.get('title', 'Unknown')} ({p.get('year', 'N/A')}) - {p.get('url', 'No URL')}"
+                for p in all_papers[:10]
+            ])
+            response = f"Based on my analysis of {scope}, here are relevant papers I found:\n\n{papers_text}\n\nWould you like more details about any specific aspect of the analysis?"
+        else:
+            # Use LLM to suggest relevant papers based on the analysis
+            score_results = self.analysis_results.get("score_results", {})
+            drivers = score_results.get("drivers", [])
+            
+            import json
+            analysis_summary = {
+                "scope": scope,
+                "years": years,
+                "drivers": drivers,
+                "bias_score": score_results.get("score", 0.0),
+                "dataset_summary": self.analysis_results.get("dataset_analysis", {}).get("summary", {}),
+                "subgroup_summary": self.analysis_results.get("subgroup_analysis", {}).get("summary", {}),
+                "mitigation_summary": self.analysis_results.get("mitigation_analysis", {}).get("summary", {})
+            }
+            
+            papers_prompt = f"""Based on the bias analysis of {scope} research from the past {years} years, suggest 3-5 relevant recent papers that address racial bias gaps, fairness, or mitigation methods in this field.
+
+Analysis Findings:
+{json.dumps(analysis_summary, indent=2)}
+
+The main bias issues identified are:
+{', '.join(drivers) if drivers else 'General racial bias concerns'}
+
+Provide paper suggestions that:
+1. Address the specific bias gaps found (e.g., dataset diversity, subgroup performance, fairness methods)
+2. Are recent (published in the past 5 years)
+3. Are relevant to {scope}
+
+Format as a list with:
+- Paper title
+- Brief description of how it addresses the identified gaps
+- Year (if known)
+
+Be specific about which bias issues each paper addresses."""
+            
+            papers_suggestions = self.llm_client.generate_response(papers_prompt, temperature=0.7)
+            response = f"Based on my analysis of {scope} research, here are papers that address the identified bias gaps:\n\n{papers_suggestions}\n\nWould you like more details about any specific aspect of the analysis?"
         
-        papers_text = "\n".join([
-            f"- {p.get('title', 'Unknown')} ({p.get('year', 'N/A')}) - {p.get('url', 'No URL')}"
-            for p in all_papers[:10]
-        ])
-        
-        return f"Based on my analysis of {self.analysis_results.get('scope', 'medical AI')}, here are relevant papers I found:\n\n{papers_text}\n\nWould you like more details about any specific aspect of the analysis?"
+        self.context_manager.add_assistant_response(response)
+        return response
     
     def _default_response(self) -> str:
         """Default response when intent is unclear - be proactive"""

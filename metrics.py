@@ -194,7 +194,7 @@ class MetricsTracker:
                     "unit": "s"
                 },
                 "reproducibility_rate": {
-                    "value": 0.95,  # Placeholder - would need actual reproducibility tracking
+                    "value": aggregate.get("reproducibility_rate", 0.0), 
                     "target": self.TARGETS["reproducibility_rate"],
                     "met": True,
                     "label": "Reproducibility Rate",

@@ -58,11 +58,14 @@ class BiasScorer:
         Returns:
             Score between 0 and 1
         """
-        summary = dataset_analysis.get("summary", {})
+        if not dataset_analysis or not isinstance(dataset_analysis, dict):
+            return 1.0
+        
+        summary = dataset_analysis.get("summary", {}) or {}
         
         # For dermatology: use dark skin proportion
         avg_dark_skin_prop = summary.get("avg_dark_skin_proportion", None)
-        if avg_dark_skin_prop is not None:
+        if avg_dark_skin_prop is not None and isinstance(avg_dark_skin_prop, (int, float)):
             if avg_dark_skin_prop >= TARGET_DARK_SKIN_PROPORTION:
                 return 0.0  # Target met or exceeded
             
@@ -73,7 +76,12 @@ class BiasScorer:
             return min(score, 1.0)
         
         # For other fields: use minority representation (target: at least 25%)
-        avg_minority_rep = summary.get("avg_minority_representation", 0.0)
+        avg_minority_rep = summary.get("avg_minority_representation", None)
+        if avg_minority_rep is None:
+            avg_minority_rep = 0.0
+        elif not isinstance(avg_minority_rep, (int, float)):
+            avg_minority_rep = 0.0
+        
         target_minority = 0.25  # 25% target for minority representation
         
         if avg_minority_rep >= target_minority:
@@ -122,13 +130,22 @@ class BiasScorer:
         Returns:
             Score between 0 and 1
         """
+        if not dataset_analysis or not isinstance(dataset_analysis, dict):
+            dataset_analysis = {}
+        if not mitigation_analysis or not isinstance(mitigation_analysis, dict):
+            mitigation_analysis = {}
+        
         # Check dataset geographic diversity
-        dataset_summary = dataset_analysis.get("summary", {})
+        dataset_summary = dataset_analysis.get("summary", {}) or {}
         geo_diversity = dataset_summary.get("geographic_diversity", "low")
+        if not isinstance(geo_diversity, str):
+            geo_diversity = "low"
         
         # Check validation geographic diversity
-        validation = mitigation_analysis.get("validation", {})
+        validation = mitigation_analysis.get("validation", {}) or {}
         val_geo_diversity = validation.get("geographic_diversity", "low")
+        if not isinstance(val_geo_diversity, str):
+            val_geo_diversity = "low"
         
         # Map to scores
         diversity_map = {"low": 1.0, "medium": 0.5, "high": 0.0}
@@ -149,9 +166,12 @@ class BiasScorer:
         Returns:
             Score between 0 and 1
         """
-        summary = mitigation_analysis.get("summary", {})
-        total = summary.get("total_studies", 0)
-        with_methods = summary.get("studies_with_fairness_methods", 0)
+        if not mitigation_analysis or not isinstance(mitigation_analysis, dict):
+            return 1.0
+        
+        summary = mitigation_analysis.get("summary", {}) or {}
+        total = summary.get("total_studies", 0) or 0
+        with_methods = summary.get("studies_with_fairness_methods", 0) or 0
         
         if total == 0:
             return 1.0
@@ -170,9 +190,12 @@ class BiasScorer:
         Returns:
             Score between 0 and 1
         """
-        summary = mitigation_analysis.get("summary", {})
-        total = summary.get("total_studies", 0)
-        with_validation = summary.get("studies_with_external_validation", 0)
+        if not mitigation_analysis or not isinstance(mitigation_analysis, dict):
+            return 1.0
+        
+        summary = mitigation_analysis.get("summary", {}) or {}
+        total = summary.get("total_studies", 0) or 0
+        with_validation = summary.get("studies_with_external_validation", 0) or 0
         
         if total == 0:
             return 1.0
